@@ -86,8 +86,6 @@ proc prepareQuery(
   when defined(debbyShowSql):
     debugEcho(query)
 
-  echo query.count('?')
-  echo args
   if query.count('?') != args.len:
     dbError("Number of arguments and number of ? in query does not match")
 

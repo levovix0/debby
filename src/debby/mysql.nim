@@ -59,28 +59,31 @@ proc dbError*(db: Db) {.noreturn.} =
   ## Raises an error from the database.
   raise newException(DbError, "MySQL: " & $mysql_error(db))
 
-proc sqlType(t: string): string =
-  ## Converts nim type to sql type.
-  case t:
-  of "string": "text"
-  of "int8": "tinyint"
-  of "uint8": "tinyint unsigned"
-  of "int16": "smallint"
-  of "uint16": "smallint unsigned"
-  of "int32": "int"
-  of "uint32": "int unsigned"
-  of "int", "int64": "bigint"
-  of "uint", "uint64": "bigint unsigned"
-  of "float", "float32": "float"
-  of "float64": "double"
-  of "bool": "boolean"
-  of "Bytes": "text"
+proc sqlType(T: type): string =
+  when T is string: "text"
+  elif T is int8: "tinyint"
+  elif T is uint8: "tinyint unsigned"
+  elif T is int16: "smallint"
+  elif T is uint16: "smallint unsigned"
+  elif T is int32: "int"
+  elif T is uint32: "int unsigned"
+  elif T is int or T is int64: "bigint"
+  elif T is uint or T is uint64: "bigint unsigned"
+  elif T is float or T is float32: "float"
+  elif T is float64: "double"
+  elif T is bool: "boolean"
+  elif T is Bytes: "text"
+  elif T is enum: "text"
   else: "json"
+
+proc toArgumentMysql*[T](v: T): Argument =
+  result.value = v.sqlDump()
+  result.kind = sqlType(T)
 
 proc prepareQuery(
   db: DB,
   query: string,
-  args: varargs[Argument, toArgument]
+  args: varargs[Argument, toArgumentMysql]
 ): string =
   ## Generates the query based on parameters.
   when defined(debbyShowSql):
@@ -97,7 +100,7 @@ proc prepareQuery(
       # mySQL does not take JSON in the query
       # It must be CAST AS JSON.
       # At this point I just check for {} an cast it?
-      if sqlType(arg.kind) == "json":
+      if arg.kind == "json":
         result.add "CAST("
       result.add "'"
       var escapedArg = newString(arg.value.len * 2 + 1)
@@ -110,7 +113,7 @@ proc prepareQuery(
       escapedArg.setLen(newLen)
       result.add escapedArg
       result.add "'"
-      if sqlType(arg.kind) == "json":
+      if arg.kind == "json":
         result.add " AS JSON)"
       inc argNum
     else:
@@ -219,7 +222,7 @@ proc createTableStatement*[T: ref object](db: Db, t: typedesc[T]): string =
     result.add "  "
     result.add name.toSnakeCase
     result.add " "
-    result.add sqlType($type(field))
+    result.add sqlType(type(field))
     if name == "id":
       result.add " PRIMARY KEY AUTO_INCREMENT"
     result.add ",\n"
@@ -256,7 +259,7 @@ proc checkTable*[T: ref object](db: Db, t: typedesc[T]) =
       tableSchema[fieldName] = fieldType
 
     for fieldName, field in tmp[].fieldPairs:
-      let sqlType = sqlType($type(field))
+      let sqlType = sqlType(type(field))
 
       if fieldName.toSnakeCase in tableSchema:
         if tableSchema[fieldName.toSnakeCase] == sqlType:

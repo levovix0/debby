@@ -1,5 +1,5 @@
 import common, jsony, std/strutils, std/strformat, std/tables, std/macros,
-    std/sets
+    std/sets, std/times
 export common, jsony
 
 when defined(windows):
@@ -74,6 +74,7 @@ proc sqlType(T: type): string =
   elif T is bool: "boolean"
   elif T is Bytes: "text"
   elif T is enum: "text"
+  elif T is DateTime: "timestamp"
   else: "json"
 
 proc toArgumentMysql*[T](v: T): Argument =

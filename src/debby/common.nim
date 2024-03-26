@@ -1,4 +1,4 @@
-import jsony, std/typetraits, std/strutils, std/macros, std/sets, std/strformat
+import jsony, std/typetraits, std/strutils, std/macros, std/sets, std/strformat, std/times
 
 type
   Db* = distinct pointer  ## Generic database pointer.
@@ -19,6 +19,8 @@ const ReservedNames* = [
 ] ## Do not use these strings in your tables or column names.
 
 const ReservedSet = toHashSet(ReservedNames)
+
+const timestamp_format = "yyyy-MM-dd HH:mm:ss"
 
 proc toSnakeCase*(s: string): string =
   for c in s:
@@ -70,6 +72,10 @@ proc sqlDumpHook*[T: string](v: T): string =
   ## SQL dump hook for strings.
   v
 
+proc sqlDumpHook*[T: DateTime](v: T): string =
+  ## SQL dump hook for timestamps.
+  v.format(timestamp_format)
+
 proc sqlDumpHook*[T: distinct](v: T): string =
   ## SQL dump hook for strings.
   sqlDumpHook(v.distinctBase)
@@ -112,6 +118,10 @@ proc sqlParseHook*[T: enum](data: string, v: var T) =
     v = parseEnum[T](data)
   except:
     discard # default enum value
+
+proc sqlParseHook*[T: DateTime](data: string, v: var T) =
+  ## SQL parse hook to convert to a string.
+  v = data.parse(timestamp_format)
 
 proc sqlParseHook*[T: distinct](data: string, v: var T) =
   ## SQL parse distinct.

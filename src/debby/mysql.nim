@@ -75,7 +75,8 @@ proc sqlType(T: type): string =
   elif T is Bytes: "text"
   elif T is enum: "text"
   elif T is DateTime: "timestamp"
-  else: "json"
+  # else: "json"
+  else: "text"
 
 proc toArgumentMysql*[T](v: T): Argument =
   result.value = v.sqlDump()
